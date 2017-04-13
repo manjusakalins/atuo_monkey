@@ -19,4 +19,6 @@ include $(CLEAR_VARS)
 LOCAL_MODULE    := pwr_button_press
 LOCAL_SRC_FILES := pwr_button_press.c
 
+LOCAL_LDLIBS :=  -llog
+
 include $(BUILD_EXECUTABLE)

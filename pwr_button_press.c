@@ -1,3 +1,4 @@
+
 #include <stdio.h>
 #include <fcntl.h>
 #include <time.h>
@@ -6,8 +7,24 @@
 #include <errno.h>
 #include <unistd.h>
 
+//#define ENABLE_LOGCAT
+#ifdef ENABLE_LOGCAT
+#include  <android/log.h>
+#define DEBUG
+#ifdef DEBUG
+#define LOGD(...) __android_log_print(ANDROID_LOG_DEBUG,LOG_TAG,__VA_ARGS__)
+#else
+#define LOGD(...)  void(0)
+#endif
+
+#define LOG_TAG "automonkey"
+
+#define printf LOGD
+#endif
+
 //for battery auto discharge
-#define ENABLE_BATTERY_DISCHG
+//#define ENABLE_BATTERY_DISCHG
+
 
 //#define LIN_DEBUG
 #ifdef LIN_DEBUG
@@ -193,6 +210,13 @@ int find_thread_there(char *name)
 int open_file(char *name, int flag)
 {
 	int ret_fd;
+#if 0
+	int ret = 0;
+	char chmod_fname[128];
+	snprintf(chmod_fname, 128, "chmod 777 %s", name);
+	ret = system(chmod_fname);
+	printf("%s chmod ret: %d\n", __func__, ret);
+#endif
 	ret_fd = open(name, flag);
 	if (ret_fd < 0) {
 		printf("open file failed %d, errno: %d, %s\n", ret_fd, errno, name);
@@ -206,6 +230,7 @@ int close_file(int fd)
 {
 	close(fd);
 }
+
 
 char *get_panel_bl_file(void)
 {
@@ -263,28 +288,34 @@ int main(void)
 	system("setenforce 0");
 	struct input_event ev;
 	printf("=======================>%s %d\n", __func__, __LINE__);
+	int reti = 1;
 
 	//find bl filename.
 	cur_panel_bl_fn = get_panel_bl_file();
 	if (cur_panel_bl_fn == NULL) {
 		printf("!!! not find panel bl file\n");
-		return -1;
+		return -reti;
 	}
+	reti++;
 
 	//open pwr event
 	pwr_idx = find_pwr_event();
 	if (pwr_idx < 0) {
 		printf("!!!! not find the pwr key input device\n");
-		return -1;
+		return -reti;
 	}
+	reti++;
+
 	snprintf(pwr_fname, 64, "/dev/input/event%d", pwr_idx);
 	pwr_fd = open_file(pwr_fname, O_RDWR);
 	if (pwr_fd < 0) return -1;
 	panel_fd = open_file(cur_panel_bl_fn, O_RDWR);
 	if (panel_fd < 0) {
 		close_file(pwr_fd);
-		return -1;
+		return -reti;
 	}
+	reti++;
+
 	printf("=======================>%s %d\n", __func__, __LINE__);
 
 	close_file(pwr_fd);
@@ -313,12 +344,15 @@ int main(void)
 	while(1) {
 		//######open file############
 		panel_fd = open_file(cur_panel_bl_fn, O_RDWR);
-		if (panel_fd < 0) return -1;
 
+		reti++;
+		if (panel_fd < 0) return -reti;
+
+		reti++;
 		usb_fd = open_file(USB_FUNC_FILE, O_RDWR);
 		if (usb_fd < 0) {
 			close_file(panel_fd);
-			return -1;
+			return -reti;
 		}
 
 		//######## check sh runing ##############
@@ -379,3 +413,4 @@ int main(void)
 	return 0;
 
 }
+
